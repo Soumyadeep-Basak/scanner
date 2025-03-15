@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Firebase Auth</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body class="dashboard-page">
+  <header class="dashboard-header">
+    <div class="logo">
+      <i class="fas fa-shield-alt"></i>
+      <span>Firebase Auth</span>
+    </div>
+    <nav class="dashboard-nav">
+      <button class="btn btn-outline" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Log Out
+      </button>
+    </nav>
+  </header>
+
+  <main class="dashboard-container">
+    <div class="dashboard-welcome">
+      <h1>Welcome to Your Dashboard</h1>
+      <p class="subtitle">Manage your files and uploads</p>
+    </div>
+
+    <div class="dashboard-grid">
+      <section class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="fas fa-cloud-upload-alt"></i> Upload Files</h2>
+        </div>
+        <div class="card-body">
+          <div class="upload-options">
+            <label for="fileInput" class="upload-area" id="uploadArea">
+              <i class="fas fa-file-upload upload-icon"></i>
+              <p>Drag files here or click to browse</p>
+              <input type="file" id="fileInput" class="file-input">
+            </label>
+            
+            <div class="action-buttons">
+              <button class="btn btn-primary" onclick="uploadFile()">
+                <i class="fas fa-upload"></i> Upload File
+              </button>
+              <button class="btn btn-secondary" onclick="redirectToCamera()">
+                <i class="fas fa-camera"></i> Camera
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-card">
+        <div class="card-header">
+          <h2><i class="fas fa-folder-open"></i> Your Uploads</h2>
+        </div>
+        <div class="card-body">
+          <div class="files-list">
+            <ul id="fileList" class="file-items">
+              <li class="file-item file-empty">No files uploaded yet</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="dashboard-footer">
+    <p>&copy; 2025 Firebase Auth Demo. All rights reserved.</p>
+  </footer>
+
+  <script type="module" src="script.js"></script>
+  <script>
+    // Add drag and drop functionality
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('drag-over');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('drag-over');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        // Optional: Display the selected file name
+        const fileName = e.dataTransfer.files[0].name;
+        updateFileSelection(fileName);
+      }
+    });
+    
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        const fileName = fileInput.files[0].name;
+        updateFileSelection(fileName);
+      }
+    });
+    
+    function updateFileSelection(fileName) {
+      const fileNameDisplay = document.createElement('p');
+      fileNameDisplay.classList.add('selected-file');
+      fileNameDisplay.innerHTML = `<i class="fas fa-file-alt"></i> ${fileName}`;
+      
+      // Remove any existing file selection display
+      const existingSelection = uploadArea.querySelector('.selected-file');
+      if (existingSelection) {
+        uploadArea.removeChild(existingSelection);
+      }
+      
+      // Replace the default upload text
+      const defaultText = uploadArea.querySelector('p:not(.selected-file)');
+      if (defaultText) {
+        defaultText.style.display = 'none';
+      }
+      
+      uploadArea.appendChild(fileNameDisplay);
+    }
+
+    // Redirect to camera page
+    window.redirectToCamera = function() {
+      window.location.href = "camera.html";
+    }
+  </script>
+</body>
+</html>

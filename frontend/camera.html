@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera | Firebase Auth</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body class="camera-page">
+  <header class="dashboard-header">
+    <div class="logo">
+      <i class="fas fa-shield-alt"></i>
+      <span>Firebase Auth</span>
+    </div>
+    <nav class="dashboard-nav">
+      <button class="btn btn-outline" onclick="goBackToDashboard()">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+      </button>
+    </nav>
+  </header>
+
+  <main class="camera-container">
+    <div class="camera-card">
+      <div class="card-header">
+        <h2><i class="fas fa-camera"></i> Take a Photo</h2>
+      </div>
+      <div class="card-body">
+        <div class="camera-preview-container">
+          <video id="cameraPreview" autoplay></video>
+          <canvas id="canvas" style="display: none;"></canvas>
+          <div id="capturedImageContainer" class="captured-image-container" style="display: none;">
+            <img id="capturedImage" class="captured-image" alt="Captured image">
+          </div>
+        </div>
+        <div class="camera-controls">
+          <button id="captureBtn" class="btn btn-primary btn-full">
+            <i class="fas fa-camera"></i> Capture Photo
+          </button>
+          <div id="captureActions" class="camera-actions" style="display: none;">
+            <button class="btn btn-secondary" onclick="retakePhoto()">
+              <i class="fas fa-redo"></i> Retake
+            </button>
+            <button class="btn btn-primary" onclick="uploadCapturedPhoto()">
+              <i class="fas fa-check"></i> Use Photo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="dashboard-footer">
+    <p>&copy; 2025 Firebase Auth Demo. All rights reserved.</p>
+  </footer>
+
+  <script type="module">
+    import { auth } from './auth.js';
+    
+    // Initialize camera when page loads
+    document.addEventListener('DOMContentLoaded', initCamera);
+    
+    // Global variables
+    let capturedBlob = null;
+    
+    // Initialize camera
+    function initCamera() {
+      const video = document.getElementById('cameraPreview');
+      
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          video.srcObject = stream;
+        })
+        .catch(error => {
+          console.error("Error accessing camera:", error);
+          alert("Error accessing camera. Please ensure camera permissions are granted.");
+        });
+      
+      // Set up capture button
+      document.getElementById('captureBtn').addEventListener('click', captureImage);
+    }
+    
+    // Capture image function
+    window.captureImage = function() {
+      const video = document.getElementById('cameraPreview');
+      const canvas = document.getElementById('canvas');
+      const context = canvas.getContext('2d');
+      
+      // Set canvas size to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      // Draw the video frame to the canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Display captured image
+      const capturedImage = document.getElementById('capturedImage');
+      capturedImage.src = canvas.toDataURL('image/png');
+      
+      // Show capture actions and hide capture button
+      document.getElementById('cameraPreview').style.display = 'none';
+      document.getElementById('capturedImageContainer').style.display = 'block';
+      document.getElementById('captureBtn').style.display = 'none';
+      document.getElementById('captureActions').style.display = 'flex';
+      
+      // Convert canvas to Blob
+      canvas.toBlob((blob) => {
+        capturedBlob = new File([blob], "captured_image.png", { type: "image/png" });
+      }, "image/png");
+    };
+    
+    // Retake photo
+    window.retakePhoto = function() {
+      // Hide captured image and actions, show video preview and capture button
+      document.getElementById('cameraPreview').style.display = 'block';
+      document.getElementById('capturedImageContainer').style.display = 'none';
+      document.getElementById('captureBtn').style.display = 'block';
+      document.getElementById('captureActions').style.display = 'none';
+      
+      // Clear the captured blob
+      capturedBlob = null;
+    };
+    
+    // Upload captured photo
+    window.uploadCapturedPhoto = async function() {
+      if (!capturedBlob) {
+        alert("No image captured.");
+        return;
+      }
+      
+      const user = auth.currentUser;
+      if (!user) {
+        alert("User not authenticated.");
+        return;
+      }
+      
+      const token = await user.getIdToken();
+      
+      const formData = new FormData();
+      formData.append("file", capturedBlob);
+      
+      // Show loading state
+      const uploadBtn = document.querySelector('#captureActions .btn-primary');
+      const originalText = uploadBtn.innerHTML;
+      uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+      uploadBtn.disabled = true;
+      
+      fetch("http://127.0.0.1:5000/upload", {
+        method: "POST",
+        headers: {
+          "Authorization": token
+        },
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message);
+        // Redirect back to dashboard
+        window.location.href = "dashboard.html";
+      })
+      .catch(error => {
+        console.error("Error uploading file:", error);
+        alert("Error uploading image. Please try again.");
+        // Reset button
+        uploadBtn.innerHTML = originalText;
+        uploadBtn.disabled = false;
+      });
+    };
+    
+    // Go back to dashboard
+    window.goBackToDashboard = function() {
+      // Stop camera stream before navigating away
+      const video = document.getElementById('cameraPreview');
+      const stream = video.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      
+      window.location.href = "dashboard.html";
+    };
+  </script>
+</body>
+</html>
