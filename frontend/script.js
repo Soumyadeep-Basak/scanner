@@ -8,11 +8,11 @@ window.signUp = function() {
 
   createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("Sign Up Successful!");
+      console.log("Sign Up Successful!");
       window.location.href = "dashboard.html"; // Redirect to Dashboard
     })
     .catch(error => {
-      alert(error.message);
+      console.error("Sign Up Error:", error.message);
     });
 }
 
@@ -23,11 +23,11 @@ window.login = function() {
 
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("Login Successful!");
+      console.log("Login Successful!");
       window.location.href = "dashboard.html"; // Redirect to Dashboard
     })
     .catch(error => {
-      alert(error.message);
+      console.error("Login Error:", error.message);
     });
 }
 
@@ -47,11 +47,11 @@ onAuthStateChanged(auth, (user) => {
 window.logout = function() {
   signOut(auth)
     .then(() => {
-      alert("Logged Out!");
+      console.log("Logged Out!");
       window.location.href = "index.html"; // Redirect to Login Page
     })
     .catch(error => {
-      alert(error.message);
+      console.error("Logout Error:", error.message);
     });
 }
 
@@ -61,14 +61,21 @@ window.uploadFile = async function() {
   const file = fileInput.files[0];
   
   if (!file) {
-    alert("Please select a file to upload.");
+    console.error("No file selected.");
     return;
   }
 
   const user = auth.currentUser;
   if (!user) {
-    alert("User not authenticated.");
+    console.error("User not authenticated.");
     return;
+  }
+
+  // Show loading state
+  const uploadButton = document.querySelector('#uploadBtn');
+  if (uploadButton) {
+    uploadButton.textContent = "Uploading...";
+    uploadButton.disabled = true;
   }
 
   const token = await user.getIdToken();
@@ -77,6 +84,8 @@ window.uploadFile = async function() {
   formData.append("file", file);
 
   try {
+    console.log(`Uploading file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+    
     const response = await fetch("http://127.0.0.1:5000/upload", {
       method: "POST",
       headers: {
@@ -85,16 +94,42 @@ window.uploadFile = async function() {
       body: formData
     });
     
+    const responseData = await response.json();
+    
     if (!response.ok) {
-      throw new Error(`Server responded with status: ${response.status}`);
+      // Handle server errors
+      throw new Error(responseData.error || `Server responded with status: ${response.status}`);
     }
     
-    const data = await response.json();
-    alert(data.message);
-    showUploadedFiles();
+    // Success: File uploaded
+    console.log("File uploaded successfully:", responseData.message);
+    
+    // Wait for 3 seconds before fetching the file list
+    setTimeout(() => {
+      showUploadedFiles();
+    }, 3000); // 3-second delay
+    
+    // Reset the file input and selection display
+    fileInput.value = '';
+    const uploadArea = document.getElementById('uploadArea');
+    if (uploadArea) {
+      const defaultText = uploadArea.querySelector('p:not(.selected-file)');
+      if (defaultText) {
+        defaultText.style.display = 'block';
+      }
+      const existingSelection = uploadArea.querySelector('.selected-file');
+      if (existingSelection) {
+        uploadArea.removeChild(existingSelection);
+      }
+    }
   } catch (error) {
     console.error("Error uploading file:", error);
-    alert("Error uploading file: " + (error.message || "Unknown error"));
+  } finally {
+    // Reset button state
+    if (uploadButton) {
+      uploadButton.textContent = "Upload";
+      uploadButton.disabled = false;
+    }
   }
 }
 
@@ -112,16 +147,17 @@ window.showUploadedFiles = async function() {
         "Authorization": token
       }
     });
-    
+
     if (!response.ok) {
       throw new Error(`Server responded with status: ${response.status}`);
     }
-    
+
     const files = await response.json();
-    
+    console.log("Files fetched:", files);  // Debugging output
+
     const fileListElement = document.getElementById('fileList');
     if (!fileListElement) return;
-    
+
     fileListElement.innerHTML = ''; // Clear previous entries
 
     if (files.length === 0) {
@@ -130,39 +166,21 @@ window.showUploadedFiles = async function() {
       li.textContent = 'No files uploaded yet';
       fileListElement.appendChild(li);
     } else {
-      files.forEach(filename => {
-        const fileUrl = `http://127.0.0.1:5000/uploads/${filename}?user=${encodeURIComponent(user.email)}`;
+      files.forEach(file => {
         const li = document.createElement('li');
         li.className = 'file-item';
         
-        // Determine file icon based on extension
-        let fileIcon = 'fa-file';
-        if (filename.match(/\.(jpg|jpeg|png|gif)$/i)) {
-          fileIcon = 'fa-file-image';
-        } else if (filename.match(/\.(pdf)$/i)) {
-          fileIcon = 'fa-file-pdf';
-        } else if (filename.match(/\.(doc|docx)$/i)) {
-          fileIcon = 'fa-file-word';
-        }
-        
         li.innerHTML = `
-          <a href="${fileUrl}" target="_blank">
-            <i class="fas ${fileIcon}"></i> ${filename}
+          <a href="${file.url}" target="_blank">
+            <i class="fas fa-file"></i> ${file.name}
           </a>`;
         fileListElement.appendChild(li);
       });
     }
   } catch (error) {
     console.error("Error fetching uploaded files:", error);
-    const fileListElement = document.getElementById('fileList');
-    if (fileListElement) {
-      fileListElement.innerHTML = `
-        <li class="file-item file-error">
-          <i class="fas fa-exclamation-triangle"></i> Error loading files
-        </li>`;
-    }
   }
-}
+};
 
 // 📸 Redirect to Camera Page
 window.redirectToCamera = function() {
@@ -216,7 +234,6 @@ window.initCamera = function() {
     })
     .catch(error => {
       console.error("Error accessing camera:", error);
-      alert("Error accessing camera. Please ensure camera permissions are granted.");
     });
     
   // Set up capture button event listener
@@ -226,52 +243,128 @@ window.initCamera = function() {
   }
 }
 
-// 📸 Capture Image
-// 📸 Capture Image// 📸 Capture Image
-// 📸 Capture Image
+// 📸 Capture Image and Convert to PDF
 window.captureImage = function() {
-    const video = document.getElementById('cameraPreview');
-    const canvas = document.getElementById('canvas');
-    const capturedImageContainer = document.getElementById('capturedImageContainer');
-    const capturedImage = document.getElementById('capturedImage');
-    const captureBtn = document.getElementById('captureBtn');
-    const captureActions = document.getElementById('captureActions');
-    
-    if (!video || !canvas) {
-      console.error("Video or canvas element not found");
-      return;
-    }
-    
-    const context = canvas.getContext('2d');
-    
-    // Set canvas size to match video dimensions
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Draw the video frame to the canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Display captured image
-    capturedImage.src = canvas.toDataURL('image/png');
-    
-    // Update UI
-    video.style.display = 'none';
-    capturedImageContainer.style.display = 'block';
-    captureBtn.style.display = 'none';
-    captureActions.style.display = 'flex';
-    
-    // Generate a timestamp for the filename
-    const timestamp = generateTimestamp();
-    const filename = `captured_image_${timestamp}.png`; // Include timestamp in the filename
-    
-    // Convert canvas to Blob and manually assign filename to the blob
-    canvas.toBlob((blob) => {
-      const fileWithTimestamp = new File([blob], filename, { type: 'image/png' });
-      window.capturedImageBlob = fileWithTimestamp; // ✅ Blob converted to File with correct name
-      window.capturedImageFilename = filename; // Store the filename for later use
-    }, "image/png", 0.95);
+  const video = document.getElementById('cameraPreview');
+  const canvas = document.getElementById('canvas');
+  const capturedImageContainer = document.getElementById('capturedImageContainer');
+  const capturedImage = document.getElementById('capturedImage');
+  const captureBtn = document.getElementById('captureBtn');
+  const captureActions = document.getElementById('captureActions');
+  
+  if (!video || !canvas) {
+    console.error("Video or canvas element not found");
+    return;
   }
   
+  const context = canvas.getContext('2d');
+  
+  // Set canvas size to match video dimensions
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  
+  // Draw the video frame to the canvas
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  // Display captured image in preview (still as image for preview only)
+  capturedImage.src = canvas.toDataURL('image/png');
+  
+  // Update UI
+  video.style.display = 'none';
+  capturedImageContainer.style.display = 'block';
+  captureBtn.style.display = 'none';
+  captureActions.style.display = 'flex';
+  
+  // Generate a timestamp for the filename
+  const timestamp = generateTimestamp();
+  const filename = `captured_document_${timestamp}.pdf`; // PDF filename
+  
+  try {
+    // Convert canvas to blob first
+    canvas.toBlob(function(blob) {
+      console.log("Canvas converted to blob:", blob.type, "size:", blob.size);
+      
+      // Store the image blob with filename (we'll convert to PDF on the server side)
+      window.capturedImageBlob = new File([blob], filename.replace('.pdf', '.png'), { type: 'image/png' });
+      window.capturedImageFilename = filename.replace('.pdf', '.png');
+      
+      console.log("Image prepared for upload:", window.capturedImageFilename);
+    }, 'image/png', 0.95);
+  } catch (error) {
+    console.error("Error preparing image:", error);
+  }
+}
+
+// 📤 Upload Captured Photo (let server convert to PDF)
+window.uploadCapturedPhoto = async function() {
+  if (!window.capturedImageBlob) {
+    console.error("No document captured.");
+    return;
+  }
+  
+  const user = auth.currentUser;
+  if (!user) {
+    console.error("User not authenticated.");
+    return;
+  }
+  
+  try {
+    const token = await user.getIdToken();
+    
+    // Use the stored image blob - server will convert to PDF
+    const file = window.capturedImageBlob;
+    
+    // Show loading state
+    const uploadBtn = document.querySelector('#captureActions .btn-primary');
+    if (uploadBtn) {
+      const originalText = uploadBtn.innerHTML;
+      uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+      uploadBtn.disabled = true;
+    }
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    console.log("Uploading image:", file.name, "Size:", file.size, "Type:", file.type);
+    
+    const response = await fetch("http://127.0.0.1:5000/upload", {
+      method: "POST",
+      headers: {
+        "Authorization": token
+      },
+      body: formData
+    });
+    
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.error || `Server responded with status: ${response.status}`);
+    }
+    
+    console.log("Upload response:", responseData);
+    
+    // Stop camera stream before navigating away
+    const video = document.getElementById('cameraPreview');
+    if (video && video.srcObject) {
+      const stream = video.srcObject;
+      stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Redirect back to dashboard
+    window.location.href = "dashboard.html";
+    
+  } catch (error) {
+    console.error("Error uploading captured document:", error);
+  } finally {
+    // Reset button if still on page
+    const uploadBtn = document.querySelector('#captureActions .btn-primary');
+    if (uploadBtn) {
+      uploadBtn.innerHTML = '<i class="fas fa-check"></i> Use Document';
+      uploadBtn.disabled = false;
+    }
+  }
+}
+
 // 🔄 Retake Photo
 window.retakePhoto = function() {
   const video = document.getElementById('cameraPreview');
@@ -285,87 +378,10 @@ window.retakePhoto = function() {
   captureBtn.style.display = 'block';
   captureActions.style.display = 'none';
   
-  // Clear the captured blob and filename
+  // Clear the captured image
   window.capturedImageBlob = null;
   window.capturedImageFilename = null;
 }
-
-// 📤 Upload Captured Photo
-window.uploadCapturedPhoto = async function() {
-    if (!window.capturedImageBlob) {
-      alert("No image captured.");
-      return;
-    }
-    
-    const user = auth.currentUser;
-    if (!user) {
-      alert("User not authenticated.");
-      return;
-    }
-    
-    try {
-      const token = await user.getIdToken();
-      
-      // Use the stored filename with timestamp
-      const filename = window.capturedImageFilename || `captured_${generateTimestamp()}.png`;
-      const file = new File([window.capturedImageBlob], filename, { 
-        type: "image/png",
-        lastModified: new Date().getTime()
-      });
-      
-      // Show loading state
-      const uploadBtn = document.querySelector('#captureActions .btn-primary');
-      if (uploadBtn) {
-        const originalText = uploadBtn.innerHTML;
-        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-        uploadBtn.disabled = true;
-      }
-      
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      console.log("Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
-      
-      const response = await fetch("http://127.0.0.1:5000/upload", {
-        method: "POST",
-        headers: {
-          "Authorization": token
-        },
-        body: formData
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server responded with status: ${response.status}. ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log("Upload response:", data);
-      
-      alert(data.message || "Upload successful!");
-      
-      // Stop camera stream before navigating away
-      const video = document.getElementById('cameraPreview');
-      if (video && video.srcObject) {
-        const stream = video.srcObject;
-        stream.getTracks().forEach(track => track.stop());
-      }
-      
-      // Redirect back to dashboard
-      window.location.href = "dashboard.html";
-      
-    } catch (error) {
-      console.error("Error uploading captured image:", error);
-      alert("Error uploading image: " + (error.message || "Unknown error"));
-      
-      // Reset button if still on page
-      const uploadBtn = document.querySelector('#captureActions .btn-primary');
-      if (uploadBtn) {
-        uploadBtn.innerHTML = '<i class="fas fa-check"></i> Use Photo';
-        uploadBtn.disabled = false;
-      }
-    }
-  }
 
 // Event listeners section
 document.addEventListener('DOMContentLoaded', function() {

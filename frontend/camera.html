@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Camera | Firebase Auth</title>
+  <title>Camera | Scanner</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
@@ -11,7 +11,7 @@
   <header class="dashboard-header">
     <div class="logo">
       <i class="fas fa-shield-alt"></i>
-      <span>Firebase Auth</span>
+      <span>Scanner</span>
     </div>
     <nav class="dashboard-nav">
       <button class="btn btn-outline" onclick="goBackToDashboard()">
@@ -51,7 +51,7 @@
   </main>
 
   <footer class="dashboard-footer">
-    <p>&copy; 2025 Firebase Auth Demo. All rights reserved.</p>
+    <p>&copy; 2025 Scanner Demo. All rights reserved.</p>
   </footer>
 
   <script type="module">
@@ -73,7 +73,7 @@
         })
         .catch(error => {
           console.error("Error accessing camera:", error);
-          alert("Error accessing camera. Please ensure camera permissions are granted.");
+          // alert("Error accessing camera. Please ensure camera permissions are granted.");
         });
       
       // Set up capture button
@@ -124,13 +124,13 @@
     // Upload captured photo
     window.uploadCapturedPhoto = async function() {
       if (!capturedBlob) {
-        alert("No image captured.");
+        // alert("No image captured.");
         return;
       }
       
       const user = auth.currentUser;
       if (!user) {
-        alert("User not authenticated.");
+        // alert("User not authenticated.");
         return;
       }
       
@@ -154,13 +154,13 @@
       })
       .then(response => response.json())
       .then(data => {
-        alert(data.message);
+        // alert(data.message);
         // Redirect back to dashboard
         window.location.href = "dashboard.html";
       })
       .catch(error => {
         console.error("Error uploading file:", error);
-        alert("Error uploading image. Please try again.");
+        // alert("Error uploading image. Please try again.");
         // Reset button
         uploadBtn.innerHTML = originalText;
         uploadBtn.disabled = false;
@@ -179,5 +179,6 @@
       window.location.href = "dashboard.html";
     };
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>

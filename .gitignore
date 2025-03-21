@@ -3,3 +3,5 @@
 /myenv
 /backend/__pycache__
 /backend/uploads
+/backend/.env
+/backend/backend
